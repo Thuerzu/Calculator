@@ -1,15 +1,17 @@
 #include "Tokenizer.h"
+#include "Exceptions/TokenizerException.h"
 #include <iostream>
 
 namespace miniT
 {
-	std::vector<std::tuple<char, TokenType>> Tokenizer::SingleSpecials = {
-			{'+', TokenType::operatorAdd},
-			{'-', TokenType::operatorSub},
-			{'*', TokenType::operatorMult},
-			{'/', TokenType::operatorDiv},
-			{'(', TokenType::leftP},
-			{')', TokenType::rightP}
+	std::unordered_map<char, TokenType> Tokenizer::SingleSpecials = {
+		{'+', TokenType::operatorAdd},
+		{'-', TokenType::operatorSub},
+		{'*', TokenType::operatorMult},
+		{'/', TokenType::operatorDiv},
+		{'(', TokenType::leftP},
+		{')', TokenType::rightP},
+		{'=', TokenType::assignment}
 	};
 
 	bool isDigit(char chr)
@@ -17,18 +19,23 @@ namespace miniT
 		return (chr >= '0') && (chr <= '9');
 	}
 
-	Tokenizer::Tokenizer(std::string source)
+	Tokenizer::Tokenizer(const std::string& source)
+	{
+		SetSource(source);
+	}
+
+	void Tokenizer::SetSource(const std::string& source)
 	{
 		State = State::Start;
+		Position = 0;
 		Source = source;
+		CurrentChar = source.at(0);
 	}
 
 	Token* Tokenizer::ScanNext()
 	{
 
-		std::cout << "ScanNext() invoked\n";
-		static uint32_t i = 0;
-		char currentChar = 0;
+		//std::cout << "ScanNext() invoked\n";
 
 		State = State::Start;
 
@@ -37,7 +44,7 @@ namespace miniT
 		while (true)
 		{
 			
-			if (i >= Source.length())
+			if (Position >= Source.length())
 			{
 				if (Buffer.str() != "")
 				{
@@ -50,48 +57,72 @@ namespace miniT
 				return &Next;
 			}
 
-			currentChar = Source.at(i);
-
-			bool isSpecial = false;
-			for (auto[single, type] : SingleSpecials)
+			if (isspace(CurrentChar))
 			{
-				if (single == currentChar) {
-					if (Buffer.str() != "")
-					{
-						Next = Token({ Buffer.str(), TokenType::number, 0, 0 });
-						return &Next;
-					}
-
-					i++;
-					Next = Token({ "", type, 0, 0 });
-					return &Next;
-				}
+				NextChar(CurrentChar);
+				continue;
 			}
 
-			i++;
+			if (isdigit(CurrentChar))
+				return ScanNumber();
 
-			if (currentChar == ' ') break;
+			if (isalpha(CurrentChar))
+				return ScanID();
 
-			if (currentChar == '.') {
-				if (State == State::NumFract)
-				{
-					std::cout << "[ERROR] Too many decimal points in number!\n";
-					throw - 1;
-				}
-				State = State::NumFract;
-			}
-				
-			Buffer << currentChar;
+			if (SingleSpecials.find(CurrentChar) == SingleSpecials.end())
+				throw TokenizerException(0, Position, "Invalid character!");
 
-			if (isSpecial) break;
+			Next = { "", SingleSpecials[CurrentChar], 0, Position };
+			NextChar(CurrentChar);
+			return &Next;
 		}
-
-		if (Buffer.str() == "")
+	}
+	Token* Tokenizer::ScanNumber()
+	{
+		uint32_t startPos = Position;
+		Buffer.str("");
+		while (isdigit(CurrentChar))
 		{
-			return ScanNext();
+			Buffer << CurrentChar;
+			if (!NextChar(CurrentChar))
+				return &(Next = { Buffer.str(), TokenType::number, 0, startPos });
 		}
 
-		Next = Token({ Buffer.str(), TokenType::number, 0, 0 });
-		return &Next;
+		if (CurrentChar != '.')
+			return &(Next = { Buffer.str(), TokenType::number, 0, startPos });
+
+		Buffer << CurrentChar;
+		if (!NextChar(CurrentChar))
+			return &(Next = { Buffer.str(), TokenType::number, 0, startPos });
+
+		while (isdigit(CurrentChar))
+		{
+			Buffer << CurrentChar;
+			if (!NextChar(CurrentChar))
+				return &(Next = { Buffer.str(), TokenType::number, 0, startPos });
+		}
+
+		if (CurrentChar == '.')
+			throw TokenizerException(0, Position, "Too many decimal points!");
+
+		return &(Next = { Buffer.str(), TokenType::number, 0, startPos });
+	}
+	Token* Tokenizer::ScanID()
+	{
+		uint32_t startPos = Position;
+		Buffer.str("");
+		while (isalnum(CurrentChar))
+		{
+			Buffer << CurrentChar;
+			if (!NextChar(CurrentChar))
+				return &(Next = { Buffer.str(), TokenType::identifier, 0, startPos });
+		}
+		return &(Next = { Buffer.str(), TokenType::identifier, 0, startPos });
+	}
+	bool Tokenizer::NextChar(char& c)
+	{
+		if (++Position >= Source.length())
+			return false;
+		c = Source.at(Position);
 	}
 }

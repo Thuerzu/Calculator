@@ -2,7 +2,7 @@
 
 #include <string>
 #include <tuple>
-#include <vector>
+#include <unordered_map>
 #include <sstream>
 
 namespace miniT
@@ -18,6 +18,8 @@ namespace miniT
 		operatorSub,
 		operatorMult,
 		operatorDiv,
+		assignment,
+		identifier,
 		leftP, rightP,
 		number, endOfFile
 	};
@@ -64,18 +66,26 @@ namespace miniT
 	class Tokenizer
 	{
 	public:
-		Tokenizer(std::string source);
+		Tokenizer(const std::string& source);
+		void SetSource(const std::string& source);
 		Token* ScanNext();
+
+	private:
+		Token* ScanNumber();
+		Token* ScanID();
+		bool NextChar(char& c); //if eof: returns false
+
+		char CurrentChar;
+		uint32_t Position;
 	public:
 		enum class State
 		{
 			Start,			//at the start of a new token
 			NumInt,			//inside the integer part of a number
 			NumFract,		//inside the fractal part of a number
-			String,			//inside a string
 			Text			//inside an ID
 		} State;
-		static std::vector<std::tuple<char, TokenType>> SingleSpecials;
+		static std::unordered_map<char, TokenType> SingleSpecials;
 
 		Token Next;
 		std::string Source;
