@@ -14,6 +14,7 @@ namespace miniT {
 		TreeNode* GetTree();
 
 	private:
+		TreeNode* ParseA();
 		TreeNode* ParseE();
 		TreeNode* ParseT();
 		TreeNode* ParseF();

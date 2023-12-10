@@ -1,4 +1,6 @@
 #include "Scope.h"
+#include "Exceptions/InvalidIdentifierException.h"
+#include "BuildIn/Constants.h"
 
 miniT::Scope* miniT::Scope::Find(std::string name)
 {
@@ -27,6 +29,12 @@ bool miniT::Scope::Set(std::string name, TreeNode* ast)
 bool miniT::Scope::Add(std::string name, TreeNode* ast)
 {
 	bool modified = Find(name);
+	if (modified)
+	{
+		if (miniT::Constants::IsBuildIn(name))
+			throw miniT::InvalidIdentifierException(0, 0, name + " is a built-in identifier and cannot be overwritten");
+		delete Members[name];
+	}
 	Members[name] = ast;
 	return modified;
 }

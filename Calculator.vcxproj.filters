@@ -24,13 +24,13 @@
     <ClCompile Include="Parser.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="Exceptions\TokenizerException.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="Exceptions\ParserException.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="Scope.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildIn\Constants.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="BuildIn\Functions.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -51,6 +51,15 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="Scope.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildIn\Constants.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="Exceptions\InvalidIdentifierException.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildIn\Functions.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

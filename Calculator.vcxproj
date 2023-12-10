@@ -140,6 +140,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BuildIn\Constants.h" />
+    <ClInclude Include="BuildIn\Functions.h" />
+    <ClInclude Include="Exceptions\InvalidIdentifierException.h" />
     <ClInclude Include="Parser.h" />
     <ClInclude Include="Exceptions\ParserException.h" />
     <ClInclude Include="Scope.h" />
@@ -148,12 +151,12 @@
     <ClInclude Include="TreeNodes.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="BuildIn\Constants.cpp" />
+    <ClCompile Include="BuildIn\Functions.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Parser.cpp" />
-    <ClCompile Include="Exceptions\ParserException.cpp" />
     <ClCompile Include="Scope.cpp" />
     <ClCompile Include="Tokenizer.cpp" />
-    <ClCompile Include="Exceptions\TokenizerException.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

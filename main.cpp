@@ -4,13 +4,15 @@
 #include "TreeNodes.h"
 #include "Parser.h"
 #include "Scope.h"
+#include "BuildIn/Constants.h"
+#include "BuildIn/Functions.h"
 
 int main() {
 	
 	miniT::Scope stdScope = miniT::Scope();
 	stdScope.Name = "std";
-	stdScope.Add("pi", new miniT::Number(3.141592653589793));
-	stdScope.Add("e",  new miniT::Number(2.718281828459045));
+	miniT::Constants::AddToScope(&stdScope);
+	miniT::Functions::AddToScope(&stdScope);
 
 	std::cout << "===============PRESENTING: miniT Calculator==================\n";
 
@@ -29,7 +31,17 @@ int main() {
 		tk.SetSource(userInput);
 		parser.Parse();
 		miniT::TreeNode* tree = parser.GetTree();
-		std::cout << ">>>" << tree->ToString() << " = " << tree->Eval() << "\n";
+		if (tree)
+		{
+			try
+			{
+				std::cout << ">>>" << tree->ToString() << " = " << tree->Eval() << "\n";
+			}
+			catch (const std::exception& e)
+			{
+				std::cout << e.what() << "\n";
+			}
+		}
 		std::getline(std::cin, userInput);
 	}
 

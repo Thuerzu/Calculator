@@ -1,5 +1,7 @@
 #include "Parser.h"
 #include "Exceptions/ParserException.h"
+#include "Exceptions/TokenizerException.h"
+#include <stdexcept>
 #include <iostream>
 
 namespace miniT {
@@ -14,13 +16,21 @@ namespace miniT {
 
 	void Parser::Parse()
 	{
-		Tokens->ScanNext();
-		ResultTree = ParseE();
-		CurrentScope = &StdScope;
-		if (Tokens->Next.Type != TokenType::endOfFile)
-		{
-			throw - 1;
+		delete ResultTree;
+		ResultTree = nullptr;
+		try {
+			Tokens->ScanNext();
+			ResultTree = ParseA();
+			if (Tokens->Next.Type != TokenType::endOfFile)
+			{
+				throw - 1;
+			}
 		}
+		catch (const std::exception& e)
+		{
+			std::cerr << e.what() << "\n";
+		}
+		CurrentScope = &StdScope;
 	}
 	
 	TreeNode* Parser::GetTree()
@@ -28,9 +38,65 @@ namespace miniT {
 		return ResultTree;
 	}
 
+	TreeNode* Parser::ParseA()
+	{
+		TreeNode* a = ParseE();
+		
+		if (Tokens->Next.Type == TokenType::assignment)
+		{
+			switch (a->Type())
+			{
+			case NodeType::Identifier:
+			{
+				Tokens->ScanNext();
+				AssignmentNode* temp = new AssignmentNode;
+				temp->Position = Tokens->Next.Char;
+				temp->Line = Tokens->Next.Line;
+				temp->Left = a;
+				temp->Right = ParseE();
+				a = temp;
+				break;
+			}
+			case NodeType::FunctionCall:
+			{
+				FunctionCall* funcCall = (FunctionCall*)a;
+				Identifier* arg = (Identifier*)funcCall->Argument;
+				funcCall->Argument = nullptr;
+				Function* func = new Function;
+				func->Position = a->Position;
+				func->Line = a->Line;
+				func->Name = funcCall->FunctionName;
+				func->Parameter = arg;
+				func->Parameter->Parent = &func->ActiveScope;
+				funcCall->Argument = nullptr;
+				func->Parent = CurrentScope;
+				func->ActiveScope.Name = func->Name;
+				func->ActiveScope.IsEmpty = true;
+				func->ActiveScope.Parent = CurrentScope;
+				CurrentScope = &func->ActiveScope;
+
+				Tokens->ScanNext();
+
+				AssignmentNode* fnAssign = new AssignmentNode;
+				fnAssign->Position = Tokens->Next.Char;
+				fnAssign->Line = Tokens->Next.Line;
+				fnAssign->Left = func;
+				fnAssign->Right = ParseE();
+				delete a;
+				a = fnAssign;
+				break;
+			}
+			default:
+			{
+				break;
+			}
+			}
+		}
+		return a;
+	}
+
 	TreeNode* Parser::ParseE()
 	{
-		//std::cout << "ParseE() invoked\n";
 		TreeNode* a = ParseT();
 
 		while (true)
@@ -44,7 +110,8 @@ namespace miniT {
 
 				temp->Left = a;
 				temp->Right = ParseT();
-
+				temp->Position = Tokens->Next.Char;
+				temp->Line = Tokens->Next.Line;
 				a = temp;
 				break;
 			}
@@ -55,7 +122,8 @@ namespace miniT {
 
 				temp->Left = a;
 				temp->Right = ParseT();
-
+				temp->Position = Tokens->Next.Char;
+				temp->Line = Tokens->Next.Line;
 				a = temp;
 				break;
 			}
@@ -73,8 +141,6 @@ namespace miniT {
 
 	TreeNode* Parser::ParseT()
 	{
-		//std::cout << "ParseT() invoked\n";
-
 		TreeNode* a = ParseF();
 
 		while (true)
@@ -88,7 +154,8 @@ namespace miniT {
 
 				temp->Left = a;
 				temp->Right = ParseF();
-
+				temp->Position = Tokens->Next.Char;
+				temp->Line = Tokens->Next.Line;
 				a = temp;
 				break;
 			}
@@ -99,7 +166,8 @@ namespace miniT {
 
 				temp->Left = a;
 				temp->Right = ParseF();
-
+				temp->Position = Tokens->Next.Char;
+				temp->Line = Tokens->Next.Line;
 				a = temp;
 				break;
 			}
@@ -117,15 +185,13 @@ namespace miniT {
 
 	TreeNode* Parser::ParseF()
 	{
-		//std::cout << "ParseF() invoked\n";
-
-		//std::cout << Tokens->Next.ToString() << "\n";
-
 		switch (Tokens->Next.Type)
 		{
 		case TokenType::number:
 		{
 			Number* a = new Number(Tokens->Next.Content);
+			a->Position = Tokens->Next.Char;
+			a->Line = Tokens->Next.Line;
 			Tokens->ScanNext();
 			return a;
 			break;
@@ -133,6 +199,9 @@ namespace miniT {
 		case TokenType::identifier:
 		{
 			TreeNode* a = new Identifier(Tokens->Next.Content);
+			a->Position = Tokens->Next.Char;
+			a->Line = Tokens->Next.Line;
+
 			Identifier* id = (Identifier*)a;
 			id->Parent = CurrentScope->Find(id->Name);
 			if (!id->Parent)
@@ -146,54 +215,16 @@ namespace miniT {
 				std::string name = id->Name;
 				Tokens->ScanNext();
 				FunctionCall* temp = new FunctionCall;
+				temp->Position = id->Position;
+				temp->Line = id->Line;
+				temp->FunctionName = name;
+				temp->Parent = id->Parent;
 				temp->Argument = ParseE();
 				if (Tokens->Next.Type != TokenType::rightP)
 					throw ParserException(Tokens->Next.Line, Tokens->Next.Char, "Expected ')'");
 
 				Tokens->ScanNext();
-
-				//if (temp->Argument->Type() == NodeType::Identifier)
-				if (Tokens->Next.Type == TokenType::assignment)
-				{
-					Identifier* arg = (Identifier*)temp->Argument;
-					temp->Argument = nullptr;
-					Function* func = new Function;
-					func->Name = name;
-					func->Parameter = arg;
-					func->Parameter->Parent = &func->ActiveScope;
-					temp->Argument = nullptr;
-					func->Parent = CurrentScope;
-					func->ActiveScope.Name = func->Name;
-					func->ActiveScope.IsEmpty = true;
-					func->ActiveScope.Parent = CurrentScope;
-					CurrentScope = &func->ActiveScope;
-
-					if (Tokens->Next.Type != TokenType::assignment)
-						throw ParserException(Tokens->Next.Line, Tokens->Next.Char, "Expected '='");
-
-					Tokens->ScanNext();
-
-					AssignmentNode* fnAssign = new AssignmentNode;
-					fnAssign->Left = func;
-					fnAssign->Right = ParseE();
-					delete temp;
-					delete a;
-					a = fnAssign;
-
-					break;
-				}
-				//function call
-				temp->Function = (Function*)((Identifier*)a)->Parent->Get(name);
 				delete a;
-				a = temp;
-				break;
-			}
-			case TokenType::assignment:
-			{
-				Tokens->ScanNext();
-				AssignmentNode* temp = new AssignmentNode;
-				temp->Left = a;
-				temp->Right = ParseE();
 				a = temp;
 				break;
 			}
@@ -211,13 +242,15 @@ namespace miniT {
 			Tokens->ScanNext();
 			TreeNode* a = ParseE();
 
-			if (a == nullptr) return nullptr; //something went wrong
-
 			if (Tokens->Next.Type == TokenType::rightP)
 			{
 				Tokens->ScanNext();
 				return a; //token scanned successfully 
 			}
+		
+			throw ParserException(Tokens->Next.Line, Tokens->Next.Char, "Expected ')'");
+
+			
 
 			return nullptr; //No closing parenthesis
 			break;
@@ -226,6 +259,8 @@ namespace miniT {
 		{
 			Tokens->ScanNext();
 			Negate* retVal = new Negate;
+			retVal->Position = Tokens->Next.Char;
+			retVal->Line = Tokens->Next.Line;
 			retVal->Argument = ParseF();
 			return retVal;
 			break;

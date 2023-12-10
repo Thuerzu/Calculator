@@ -50,10 +50,10 @@ namespace miniT
 				{
 					std::string temp = Buffer.str();
 					Buffer.str("");
-					Next = Token({ temp, TokenType::number, 0, 0 });
+					Next = Token({ temp, TokenType::number, 0, Position });
 					return &Next;
 				}
-				Next = Token({ "", TokenType::endOfFile, 0, 0 });
+				Next = Token({ "", TokenType::endOfFile, 0, Position });
 				return &Next;
 			}
 

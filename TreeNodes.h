@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include "Scope.h"
+#include "Exceptions/InvalidIdentifierException.h"
 
 namespace miniT
 {
@@ -22,6 +23,8 @@ namespace miniT
 		virtual double Eval() = 0;
 		virtual NodeType Type() = 0;
 		virtual ~TreeNode() {};
+
+		uint32_t Line, Position;
 	};
 
 	struct AddNode : public TreeNode
@@ -54,7 +57,9 @@ namespace miniT
 		}
 		virtual double Eval() override
 		{
-			return Left->Eval() - Right->Eval();
+			if (Left && Right)
+				return Left->Eval() - Right->Eval();
+			//throw 
 		}
 		virtual NodeType Type() override
 		{
@@ -168,7 +173,15 @@ namespace miniT
 
 		virtual double Eval() override
 		{
-			return ((Number*)Parent->Get(Name))->Value;
+			TreeNode* val;
+			val = Parent->Get(Name);
+			if (val)
+			{
+				if (val->Type() == NodeType::Number)
+					return ((Number*)val)->Value;
+				throw InvalidIdentifierException(Line, Position, "Identifier does not reference a number");
+			}
+			throw InvalidIdentifierException(Line, Position, "Unknown identifier");
 		}
 
 		virtual NodeType Type() override
@@ -177,8 +190,9 @@ namespace miniT
 		}
 	};
 
-	struct Function : public TreeNode //Currently unused cuz I'm incapable :,)
+	struct Function : public TreeNode
 	{
+	public:
 		std::string Name;
 		Identifier* Parameter;
 		TreeNode* Expression;
@@ -205,18 +219,24 @@ namespace miniT
 
 	struct FunctionCall : public TreeNode
 	{
-		Function* Function;
+		std::string FunctionName;
 		TreeNode* Argument;
+		Scope* Parent;
 		Scope InactiveScope;
 
 		virtual double Eval() override
 		{
-			InactiveScope = std::move(Function->ActiveScope);
-			Function->ActiveScope = Scope();
-			Function->ActiveScope.Add(Function->Parameter->Name, new Number(Argument->Eval()));
-			Function->ActiveScope.Name = Function->Name;
-			double retVal = Function->Eval();
-			Function->ActiveScope = std::move(InactiveScope);
+			Function* fn = (Function*)Parent->Get(FunctionName);
+			if (!fn)
+				throw InvalidIdentifierException(Line, Position, "Unknown function");
+			if (fn->Type() != NodeType::Function)
+				throw InvalidIdentifierException(Line, Position, "Identifier does not reference a function");
+			InactiveScope = std::move(fn->ActiveScope);
+			fn->ActiveScope = Scope();
+			fn->ActiveScope.Add(fn->Parameter->Name, new Number(Argument->Eval()));
+			fn->ActiveScope.Name = fn->Name;
+			double retVal = fn->Eval();
+			fn->ActiveScope = std::move(InactiveScope);
 			return retVal;
 		}
 		virtual NodeType Type() override
@@ -225,7 +245,7 @@ namespace miniT
 		}
 		virtual std::string ToString() override
 		{
-			return Function->Name + "(" + Argument->ToString() + ")";
+			return FunctionName + "(" + Argument->ToString() + ")";
 		}
 	};
 
